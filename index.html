@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanControl Pro - Gestão Financeira Pessoal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800">
+
+    <!-- Navbar Topo -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">FinanControl <span class="text-brand-500 text-xs px-2 py-0.5 bg-brand-500/10 rounded-full border border-brand-500/20">PRO</span></h1>
+                    <p class="text-xs text-slate-400">Controle de Bancos, Cartões e Despesas Fixas</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="openModal('modal-manage-entities')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-brand-500"></i>
+                    <span class="hidden sm:inline">Gerenciar Bancos & Cartões</span>
+                </button>
+                <button onclick="openTransactionModal()" class="text-xs bg-brand-600 hover:bg-brand-500 text-white font-medium px-3.5 py-2 rounded-lg transition shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Nova Transação</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Barra de Filtros e Mês Ativo -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <i class="fa-regular fa-calendar text-slate-400"></i>
+                <label for="filter-month" class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Período:</label>
+                <input type="month" id="filter-month" onchange="renderApp()" class="text-sm bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 font-medium text-slate-700 focus:ring-2 focus:ring-brand-500 outline-none">
+            </div>
+
+            <!-- Filtros Rápidos de Origem/Meio -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                <button onclick="setSourceFilter('all')" id="filter-src-all" class="filter-src-btn text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-900 text-white shadow-sm">
+                    Todos
+                </button>
+                <button onclick="setSourceFilter('banco')" id="filter-src-banco" class="filter-src-btn text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-building-columns mr-1 text-blue-500"></i> Bancos
+                </button>
+                <button onclick="setSourceFilter('cartao')" id="filter-src-cartao" class="filter-src-btn text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-credit-card mr-1 text-purple-500"></i> Cartões
+                </button>
+                <button onclick="setSourceFilter('dinheiro')" id="filter-src-dinheiro" class="filter-src-btn text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-money-bill-wave mr-1 text-emerald-500"></i> Dinheiro
+                </button>
+                <button onclick="setSourceFilter('poupanca')" id="filter-src-poupanca" class="filter-src-btn text-xs px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    <i class="fa-solid fa-piggy-bank mr-1 text-amber-500"></i> Poupança
+                </button>
+                <button onclick="toggleFixedOnlyFilter()" id="filter-src-fixed" class="text-xs px-3 py-1.5 rounded-lg font-medium transition border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 flex items-center gap-1">
+                    <i class="fa-solid fa-thumbtack text-amber-600"></i> Só Fixas
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard KPIs (Cartões de Resumo) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            
+            <!-- Saldo Consolidado -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Geral Geral</p>
+                        <h3 id="kpi-total-balance" class="text-2xl font-bold text-slate-900 mt-1">R$ 0,00</h3>
+                    </div>
+                    <div class="p-2.5 bg-slate-100 text-slate-700 rounded-xl">
+                        <i class="fa-solid fa-chart-line text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span> Contas e Poupança
+                </div>
+            </div>
+
+            <!-- Receitas do Mês -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Receitas (Mês)</p>
+                        <h3 id="kpi-month-income" class="text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h3>
+                    </div>
+                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i class="fa-solid fa-arrow-down text-lg"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Entradas cadastradas</p>
+            </div>
+
+            <!-- Despesas do Mês -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Despesas Totais</p>
+                        <h3 id="kpi-month-expenses" class="text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h3>
+                    </div>
+                    <div class="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
+                        <i class="fa-solid fa-arrow-up text-lg"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Saídas no período selecionado</p>
+            </div>
+
+            <!-- Despesas Fixas (Mês) -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Despesas Fixas</p>
+                        <h3 id="kpi-fixed-expenses" class="text-2xl font-bold text-amber-600 mt-1">R$ 0,00</h3>
+                    </div>
+                    <div class="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                        <i class="fa-solid fa-thumbtack text-lg"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Compromissos mensais recorrentes</p>
+            </div>
+
+            <!-- Cartão de Crédito Total -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Faturas Cartão</p>
+                        <h3 id="kpi-credit-expenses" class="text-2xl font-bold text-purple-600 mt-1">R$ 0,00</h3>
+                    </div>
+                    <div class="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                        <i class="fa-solid fa-credit-card text-lg"></i>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-slate-500">Acumulado em faturas</p>
+            </div>
+
+        </div>
+
+        <!-- Resumo das Contas Bancárias & Cartões Cadastrados -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Cards de Bancos -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-building-columns text-blue-500"></i> Saldo por Banco
+                    </h2>
+                    <button onclick="openModal('modal-manage-entities')" class="text-xs text-brand-600 hover:underline">Configurar</button>
+                </div>
+                <div id="bank-balances-list" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <!-- Dinâmico via JS -->
+                </div>
+            </div>
+
+            <!-- Cards de Cartões de Crédito -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-credit-card text-purple-500"></i> Gastos por Cartão
+                    </h2>
+                    <button onclick="openModal('modal-manage-entities')" class="text-xs text-brand-600 hover:underline">Configurar</button>
+                </div>
+                <div id="card-balances-list" class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <!-- Dinâmico via JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Gráficos de Análise -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Gráfico 1: Categorias -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-slate-500"></i> Gastos por Categoria
+                </h3>
+                <div class="relative h-64 flex items-center justify-center">
+                    <canvas id="chart-categories"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 2: Formas de Pagamento / Bancos / Cartões -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-bar text-slate-500"></i> Distribuição por Meio de Pagamento
+                </h3>
+                <div class="relative h-64 flex items-center justify-center">
+                    <canvas id="chart-sources"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tabela de Transações -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Extrato de Lançamentos</h3>
+                    <p class="text-xs text-slate-500">Gerencie e monitore todas as suas movimentações financeiras</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="search-input" onkeyup="renderTransactionsTable()" placeholder="Buscar lançamentos..." class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 w-48 focus:ring-2 focus:ring-brand-500 outline-none">
+                    <button onclick="exportToCSV()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium transition flex items-center gap-1">
+                        <i class="fa-solid fa-file-csv text-slate-500"></i> Exportar
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 border-b border-slate-200/80 uppercase tracking-wider font-semibold">
+                            <th class="py-3.5 px-4">Data</th>
+                            <th class="py-3.5 px-4">Descrição</th>
+                            <th class="py-3.5 px-4">Categoria</th>
+                            <th class="py-3.5 px-4">Meio / Instituição</th>
+                            <th class="py-3.5 px-4 text-center">Tipo / Fixa</th>
+                            <th class="py-3.5 px-4 text-right">Valor (R$)</th>
+                            <th class="py-3.5 px-4 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table-body" class="divide-y divide-slate-100">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="empty-state" class="p-8 text-center hidden">
+                <i class="fa-solid fa-receipt text-3xl text-slate-300 mb-2"></i>
+                <p class="text-sm font-medium text-slate-500">Nenhuma transação encontrada para este período ou filtro.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: Adicionar / Editar Transação -->
+    <div id="modal-transaction" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
+                <h3 id="modal-transaction-title" class="font-bold text-base">Nova Transação</h3>
+                <button onclick="closeModal('modal-transaction')" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="form-transaction" onsubmit="handleSaveTransaction(event)" class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="trans-id">
+
+                <!-- Tipo de Lançamento -->
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="trans-type" value="despesa" checked onchange="toggleTypeUI()" class="peer sr-only">
+                        <div class="p-3 text-center rounded-xl border border-slate-300 peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700 font-semibold transition">
+                            <i class="fa-solid fa-arrow-up mr-1 text-rose-500"></i> Despesa
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="trans-type" value="receita" onchange="toggleTypeUI()" class="peer sr-only">
+                        <div class="p-3 text-center rounded-xl border border-slate-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 font-semibold transition">
+                            <i class="fa-solid fa-arrow-down mr-1 text-emerald-500"></i> Receita
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Descrição & Valor -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2 space-y-1">
+                        <label for="trans-desc" class="font-medium text-slate-700">Descrição</label>
+                        <input type="text" id="trans-desc" required placeholder="Ex: Mercado, Aluguel, Salário" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="trans-amount" class="font-medium text-slate-700">Valor (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="trans-amount" required placeholder="0,00" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-brand-500 font-semibold">
+                    </div>
+                </div>
+
+                <!-- Data e Categoria -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label for="trans-date" class="font-medium text-slate-700">Data</label>
+                        <input type="date" id="trans-date" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="trans-category" class="font-medium text-slate-700">Categoria</label>
+                        <select id="trans-category" required class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-brand-500">
+                            <!-- Preenchido via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Meio / Forma de Pagamento -->
+                <div class="space-y-1">
+                    <label for="trans-source-type" class="font-medium text-slate-700">Forma / Origem do Pagamento</label>
+                    <select id="trans-source-type" onchange="handleSourceTypeChange()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+                        <option value="banco">Conta Bancária</option>
+                        <option value="cartao">Cartão de Crédito</option>
+                        <option value="dinheiro">Dinheiro Físico (Carteira)</option>
+                        <option value="poupanca">Reserva / Poupança</option>
+                    </select>
+                </div>
+
+                <!-- Seletor Específico de Banco ou Cartão -->
+                <div id="sub-entity-container" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div id="bank-select-group">
+                        <label for="trans-bank-id" class="font-medium text-slate-700 block mb-1">Escolha o Banco:</label>
+                        <select id="trans-bank-id" class="w-full bg-white border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-brand-500">
+                            <!-- Opções dinâmicas -->
+                        </select>
+                    </div>
+
+                    <div id="card-select-group" class="hidden">
+                        <label for="trans-card-id" class="font-medium text-slate-700 block mb-1">Escolha o Cartão de Crédito:</label>
+                        <select id="trans-card-id" class="w-full bg-white border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-brand-500">
+                            <!-- Opções dinâmicas -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Flag Despesa Fixa / Recorrente -->
+                <div id="fixed-expense-toggle" class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <input type="checkbox" id="trans-is-fixed" class="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500">
+                    <div>
+                        <label for="trans-is-fixed" class="font-semibold text-amber-900 cursor-pointer">Despesa Fixa / Mensal Recorrente</label>
+                        <p class="text-[11px] text-amber-700">Marque se este for um gasto recorrente (ex: Aluguel, Conta de Luz, Netflix, Internet).</p>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('modal-transaction')" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-medium">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold shadow-md transition">Salvar Transação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Gerenciar Bancos e Cartões -->
+    <div id="modal-manage-entities" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden">
+            <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
+                <h3 class="font-bold text-base"><i class="fa-solid fa-sliders text-brand-500 mr-2"></i>Gerenciar Bancos e Cartões</h3>
+                <button onclick="closeModal('modal-manage-entities')" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 text-xs max-h-[80vh] overflow-y-auto custom-scrollbar">
+                
+                <!-- Cadastro/Lista de Bancos -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-sm text-slate-800 pb-1 border-b border-slate-200 flex items-center justify-between">
+                        <span><i class="fa-solid fa-building-columns text-blue-500 mr-1"></i> Minhas Contas Bancárias</span>
+                    </h4>
+                    
+                    <form onsubmit="handleAddBank(event)" class="flex gap-2">
+                        <input type="text" id="new-bank-name" required placeholder="Nome do Banco (ex: Nubank, Itaú, Inter)" class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-brand-500">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg font-medium transition">Adicionar Banco</button>
+                    </form>
+
+                    <div id="banks-list-manage" class="space-y-1.5 pt-1">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+
+                <!-- Cadastro/Lista de Cartões -->
+                <div class="space-y-3 pt-2">
+                    <h4 class="font-bold text-sm text-slate-800 pb-1 border-b border-slate-200 flex items-center justify-between">
+                        <span><i class="fa-solid fa-credit-card text-purple-500 mr-1"></i> Meus Cartões de Crédito</span>
+                    </h4>
+
+                    <form onsubmit="handleAddCard(event)" class="flex gap-2">
+                        <input type="text" id="new-card-name" required placeholder="Nome do Cartão (ex: Nubank UV, Itaú Platinum)" class="flex-1 bg-slate-50 border border-slate-300 rounded-lg p-2 outline-none focus:ring-2 focus:ring-brand-500">
+                        <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg font-medium transition">Adicionar Cartão</button>
+                    </form>
+
+                    <div id="cards-list-manage" class="space-y-1.5 pt-1">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal('modal-manage-entities')" class="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium">Concluir</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- NOME DAS CHAVES DO LOCALSTORAGE ---
+        const STORAGE_KEY_TRANS = 'financontrol_transactions_v2';
+        const STORAGE_KEY_BANKS = 'financontrol_banks_v2';
+        const STORAGE_KEY_CARDS = 'financontrol_cards_v2';
+
+        // --- CATEGORIAS PADRÃO ---
+        const DEFAULT_CATEGORIES = [
+            'Alimentação', 'Moradia', 'Transporte', 'Lazer & Entretenimento', 
+            'Saúde', 'Educação', 'Salário & Rendimentos', 'Assinaturas & Serviços', 'Outros'
+        ];
+
+        // --- ESTADO DA APLICAÇÃO ---
+        let transactions = [];
+        let banks = [];
+        let cards = [];
+        let currentSourceFilter = 'all';
+        let showFixedOnly = false;
+
+        // Instâncias dos Gráficos Chart.js
+        let categoriesChartInstance = null;
+        let sourcesChartInstance = null;
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initDefaultDate();
+            loadLocalStorageData();
+            populateCategorySelect();
+            renderApp();
+        });
+
+        function initDefaultDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('filter-month').value = `${year}-${month}`;
+            document.getElementById('trans-date').valueAsDate = today;
+        }
+
+        function loadLocalStorageData() {
+            // Carregar Bancos
+            const savedBanks = localStorage.getItem(STORAGE_KEY_BANKS);
+            banks = savedBanks ? JSON.parse(savedBanks) : [
+                { id: 'b1', name: 'Nubank' },
+                { id: 'b2', name: 'Banco Itaú' },
+                { id: 'b3', name: 'Banco Inter' }
+            ];
+
+            // Carregar Cartões
+            const savedCards = localStorage.getItem(STORAGE_KEY_CARDS);
+            cards = savedCards ? JSON.parse(savedCards) : [
+                { id: 'c1', name: 'Nubank Mastercard' },
+                { id: 'c2', name: 'Itaú Platinum Visa' }
+            ];
+
+            // Carregar Transações (ou dados demonstrativos se vazio)
+            const savedTrans = localStorage.getItem(STORAGE_KEY_TRANS);
+            if (savedTrans) {
+                transactions = JSON.parse(savedTrans);
+            } else {
+                // Seed data demonstrativo
+                const currentMonth = document.getElementById('filter-month').value;
+                transactions = [
+                    { id: 't1', type: 'receita', desc: 'Salário Mensal', amount: 5500.00, date: `${currentMonth}-05`, category: 'Salário & Rendimentos', sourceType: 'banco', bankId: 'b1', cardId: '', isFixed: true },
+                    { id: 't2', type: 'despesa', desc: 'Aluguel do Apê', amount: 1800.00, date: `${currentMonth}-10`, category: 'Moradia', sourceType: 'banco', bankId: 'b2', cardId: '', isFixed: true },
+                    { id: 't3', type: 'despesa', desc: 'Supermercado Mensal', amount: 850.40, date: `${currentMonth}-12`, category: 'Alimentação', sourceType: 'cartao', bankId: '', cardId: 'c1', isFixed: false },
+                    { id: 't4', type: 'despesa', desc: 'Assinatura Netflix', amount: 55.90, date: `${currentMonth}-15`, category: 'Assinaturas & Serviços', sourceType: 'cartao', bankId: '', cardId: 'c2', isFixed: true },
+                    { id: 't5', type: 'despesa', desc: 'Combustível Posto', amount: 220.00, date: `${currentMonth}-18`, category: 'Transporte', sourceType: 'dinheiro', bankId: '', cardId: '', isFixed: false },
+                    { id: 't6', type: 'receita', desc: 'Aporte Reserva', amount: 500.00, date: `${currentMonth}-20`, category: 'Outros', sourceType: 'poupanca', bankId: '', cardId: '', isFixed: false }
+                ];
+                saveToStorage();
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY_BANKS, JSON.stringify(banks));
+            localStorage.setItem(STORAGE_KEY_CARDS, JSON.stringify(cards));
+            localStorage.setItem(STORAGE_KEY_TRANS, JSON.stringify(transactions));
+        }
+
+        function populateCategorySelect() {
+            const select = document.getElementById('trans-category');
+            select.innerHTML = DEFAULT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        // --- RENDERIZAÇÃO PRINCIPAL ---
+        function renderApp() {
+            updateSubEntitySelectors();
+            renderKPIs();
+            renderBankAndCardSummaries();
+            renderTransactionsTable();
+            renderCharts();
+            renderManageLists();
+        }
+
+        // --- FILTROS DE TEMPO E FONTE ---
+        function setSourceFilter(type) {
+            currentSourceFilter = type;
+            document.querySelectorAll('.filter-src-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-900', 'text-white', 'shadow-sm');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            const activeBtn = document.getElementById(`filter-src-${type}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+                activeBtn.classList.add('bg-slate-900', 'text-white', 'shadow-sm');
+            }
+            renderApp();
+        }
+
+        function toggleFixedOnlyFilter() {
+            showFixedOnly = !showFixedOnly;
+            const btn = document.getElementById('filter-src-fixed');
+            if (showFixedOnly) {
+                btn.classList.remove('bg-amber-50', 'text-amber-800');
+                btn.classList.add('bg-amber-600', 'text-white');
+            } else {
+                btn.classList.remove('bg-amber-600', 'text-white');
+                btn.classList.add('bg-amber-50', 'text-amber-800');
+            }
+            renderApp();
+        }
+
+        function getFilteredTransactions() {
+            const selectedMonth = document.getElementById('filter-month').value; // 'YYYY-MM'
+            return transactions.filter(t => {
+                const matchMonth = t.date.startsWith(selectedMonth);
+                const matchSource = currentSourceFilter === 'all' || t.sourceType === currentSourceFilter;
+                const matchFixed = !showFixedOnly || t.isFixed === true;
+                return matchMonth && matchSource && matchFixed;
+            });
+        }
+
+        // --- CÁLCULO E RENDERIZAÇÃO DOS KPIS ---
+        function renderKPIs() {
+            const filtered = getFilteredTransactions();
+
+            // Saldo Consolidado Geral (Total acumulado de todas as receitas menos despesas)
+            const globalIncome = transactions.filter(t => t.type === 'receita').reduce((sum, t) => sum + t.amount, 0);
+            const globalExpenses = transactions.filter(t => t.type === 'despesa').reduce((sum, t) => sum + t.amount, 0);
+            const totalBalance = globalIncome - globalExpenses;
+
+            // Mês Ativo
+            const monthIncome = filtered.filter(t => t.type === 'receita').reduce((sum, t) => sum + t.amount, 0);
+            const monthExpenses = filtered.filter(t => t.type === 'despesa').reduce((sum, t) => sum + t.amount, 0);
+            const fixedExpenses = filtered.filter(t => t.type === 'despesa' && t.isFixed).reduce((sum, t) => sum + t.amount, 0);
+            const creditExpenses = filtered.filter(t => t.type === 'despesa' && t.sourceType === 'cartao').reduce((sum, t) => sum + t.amount, 0);
+
+            document.getElementById('kpi-total-balance').textContent = formatCurrency(totalBalance);
+            document.getElementById('kpi-month-income').textContent = formatCurrency(monthIncome);
+            document.getElementById('kpi-month-expenses').textContent = formatCurrency(monthExpenses);
+            document.getElementById('kpi-fixed-expenses').textContent = formatCurrency(fixedExpenses);
+            document.getElementById('kpi-credit-expenses').textContent = formatCurrency(creditExpenses);
+        }
+
+        // --- RESUMO POR BANCOS E CARTÕES ---
+        function renderBankAndCardSummaries() {
+            const selectedMonth = document.getElementById('filter-month').value;
+            const monthTrans = transactions.filter(t => t.date.startsWith(selectedMonth));
+
+            // Resumo Bancos
+            const bankContainer = document.getElementById('bank-balances-list');
+            if (banks.length === 0) {
+                bankContainer.innerHTML = '<span class="text-slate-400 font-normal col-span-2">Nenhum banco cadastrado.</span>';
+            } else {
+                bankContainer.innerHTML = banks.map(b => {
+                    const bankTotal = monthTrans
+                        .filter(t => t.sourceType === 'banco' && t.bankId === b.id)
+                        .reduce((acc, t) => t.type === 'receita' ? acc + t.amount : acc - t.amount, 0);
+                    return `
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <p class="font-medium text-slate-500 truncate">${b.name}</p>
+                            <p class="font-bold text-slate-800 ${bankTotal < 0 ? 'text-rose-600' : ''}">${formatCurrency(bankTotal)}</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Resumo Cartões
+            const cardContainer = document.getElementById('card-balances-list');
+            if (cards.length === 0) {
+                cardContainer.innerHTML = '<span class="text-slate-400 font-normal col-span-2">Nenhum cartão cadastrado.</span>';
+            } else {
+                cardContainer.innerHTML = cards.map(c => {
+                    const cardTotal = monthTrans
+                        .filter(t => t.sourceType === 'cartao' && t.cardId === c.id && t.type === 'despesa')
+                        .reduce((acc, t) => acc + t.amount, 0);
+                    return `
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <p class="font-medium text-slate-500 truncate">${c.name}</p>
+                            <p class="font-bold text-purple-700">${formatCurrency(cardTotal)}</p>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // --- TABELA DE TRANSAÇÕES ---
+        function renderTransactionsTable() {
+            const tbody = document.getElementById('transactions-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const searchKeyword = document.getElementById('search-input').value.toLowerCase();
+
+            let filtered = getFilteredTransactions();
+
+            if (searchKeyword) {
+                filtered = filtered.filter(t => 
+                    t.desc.toLowerCase().includes(searchKeyword) || 
+                    t.category.toLowerCase().includes(searchKeyword)
+                );
+            }
+
+            // Ordenar por data decrescente
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filtered.map(t => {
+                const isIncome = t.type === 'receita';
+                
+                // Formatação do Meio/Origem
+                let sourceBadge = '';
+                if (t.sourceType === 'banco') {
+                    const bankObj = banks.find(b => b.id === t.bankId);
+                    sourceBadge = `<span class="inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-building-columns"></i> ${bankObj ? bankObj.name : 'Banco'}</span>`;
+                } else if (t.sourceType === 'cartao') {
+                    const cardObj = cards.find(c => c.id === t.cardId);
+                    sourceBadge = `<span class="inline-flex items-center gap-1 text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-credit-card"></i> ${cardObj ? cardObj.name : 'Cartão'}</span>`;
+                } else if (t.sourceType === 'dinheiro') {
+                    sourceBadge = `<span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-money-bill-wave"></i> Dinheiro</span>`;
+                } else {
+                    sourceBadge = `<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-medium"><i class="fa-solid fa-piggy-bank"></i> Poupança</span>`;
+                }
+
+                // Data Formatada
+                const dateParts = t.date.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3 px-4 font-medium text-slate-600 whitespace-nowrap">${formattedDate}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-800">
+                            ${t.desc}
+                            ${t.isFixed ? '<span class="ml-1.5 inline-block text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded" title="Despesa Fixa Recorrente"><i class="fa-solid fa-thumbtack text-[9px]"></i> Fixa</span>' : ''}
+                        </td>
+                        <td class="py-3 px-4 text-slate-600">${t.category}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">${sourceBadge}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} uppercase">
+                                ${t.type}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold whitespace-nowrap ${isIncome ? 'text-emerald-600' : 'text-slate-900'}">
+                            ${isIncome ? '+' : '-'} ${formatCurrency(t.amount)}
+                        </td>
+                        <td class="py-3 px-4 text-center whitespace-nowrap">
+                            <button onclick="editTransaction('${t.id}')" class="text-slate-400 hover:text-blue-600 p-1 mr-1 transition" title="Editar">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteTransaction('${t.id}')" class="text-slate-400 hover:text-rose-600 p-1 transition" title="Excluir">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- GRÁFICOS (CHART.JS) ---
+        function renderCharts() {
+            const filtered = getFilteredTransactions().filter(t => t.type === 'despesa');
+
+            // 1. Gráfico de Categorias (Doughnut)
+            const categoryTotals = {};
+            filtered.forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+            });
+
+            const catLabels = Object.keys(categoryTotals);
+            const catData = Object.values(categoryTotals);
+
+            const ctxCat = document.getElementById('chart-categories').getContext('2d');
+            if (categoriesChartInstance) categoriesChartInstance.destroy();
+
+            categoriesChartInstance = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels.length ? catLabels : ['Sem despesas'],
+                    datasets: [{
+                        data: catData.length ? catData : [1],
+                        backgroundColor: catData.length ? [
+                            '#f43f5e', '#3b82f6', '#8b5cf6', '#10b981', 
+                            '#f59e0b', '#06b6d4', '#ec4899', '#64748b'
+                        ] : ['#e2e8f0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                }
+            });
+
+            // 2. Gráfico por Meio de Pagamento (Bar)
+            const sourceTotals = { 'Bancos': 0, 'Cartões': 0, 'Dinheiro': 0, 'Poupança': 0 };
+            filtered.forEach(t => {
+                if (t.sourceType === 'banco') sourceTotals['Bancos'] += t.amount;
+                if (t.sourceType === 'cartao') sourceTotals['Cartões'] += t.amount;
+                if (t.sourceType === 'dinheiro') sourceTotals['Dinheiro'] += t.amount;
+                if (t.sourceType === 'poupanca') sourceTotals['Poupança'] += t.amount;
+            });
+
+            const ctxSrc = document.getElementById('chart-sources').getContext('2d');
+            if (sourcesChartInstance) sourcesChartInstance.destroy();
+
+            sourcesChartInstance = new Chart(ctxSrc, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(sourceTotals),
+                    datasets: [{
+                        label: 'Despesas (R$)',
+                        data: Object.values(sourceTotals),
+                        backgroundColor: ['#3b82f6', '#a855f7', '#10b981', '#f59e0b'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- GESTÃO DE BANCOS & CARTÕES ---
+        function updateSubEntitySelectors() {
+            // Seletor de Bancos no formulário de Transação
+            const bankSelect = document.getElementById('trans-bank-id');
+            bankSelect.innerHTML = banks.length > 0
+                ? banks.map(b => `<option value="${b.id}">${b.name}</option>`).join('')
+                : '<option value="">Nenhum banco cadastrado</option>';
+
+            // Seletor de Cartões no formulário de Transação
+            const cardSelect = document.getElementById('trans-card-id');
+            cardSelect.innerHTML = cards.length > 0
+                ? cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+                : '<option value="">Nenhum cartão cadastrado</option>';
+        }
+
+        function handleSourceTypeChange() {
+            const sourceType = document.getElementById('trans-source-type').value;
+            const bankGroup = document.getElementById('bank-select-group');
+            const cardGroup = document.getElementById('card-select-group');
+
+            if (sourceType === 'banco') {
+                bankGroup.classList.remove('hidden');
+                cardGroup.classList.add('hidden');
+            } else if (sourceType === 'cartao') {
+                bankGroup.classList.add('hidden');
+                cardGroup.classList.remove('hidden');
+            } else {
+                bankGroup.classList.add('hidden');
+                cardGroup.classList.remove('hidden');
+                bankGroup.classList.add('hidden');
+            }
+        }
+
+        function handleAddBank(e) {
+            e.preventDefault();
+            const input = document.getElementById('new-bank-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            banks.push({ id: 'b_' + Date.now(), name });
+            saveToStorage();
+            input.value = '';
+            renderApp();
+        }
+
+        function handleAddCard(e) {
+            e.preventDefault();
+            const input = document.getElementById('new-card-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            cards.push({ id: 'c_' + Date.now(), name });
+            saveToStorage();
+            input.value = '';
+            renderApp();
+        }
+
+        function deleteBank(id) {
+            if (confirm('Deseja remover este banco? Transações associadas serão mantidas.')) {
+                banks = banks.filter(b => b.id !== id);
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function deleteCard(id) {
+            if (confirm('Deseja remover este cartão? Transações associadas serão mantidas.')) {
+                cards = cards.filter(c => c.id !== id);
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function renderManageLists() {
+            const bankList = document.getElementById('banks-list-manage');
+            bankList.innerHTML = banks.map(b => `
+                <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <span class="font-medium text-slate-700"><i class="fa-solid fa-building-columns text-blue-500 mr-2"></i>${b.name}</span>
+                    <button onclick="deleteBank('${b.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+
+            const cardList = document.getElementById('cards-list-manage');
+            cardList.innerHTML = cards.map(c => `
+                <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <span class="font-medium text-slate-700"><i class="fa-solid fa-credit-card text-purple-500 mr-2"></i>${c.name}</span>
+                    <button onclick="deleteCard('${c.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // --- SALVAR TRANSAÇÃO ---
+        function handleSaveTransaction(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('trans-id').value;
+            const type = document.querySelector('input[name="trans-type"]:checked').value;
+            const desc = document.getElementById('trans-desc').value.trim();
+            const amount = parseFloat(document.getElementById('trans-amount').value);
+            const date = document.getElementById('trans-date').value;
+            const category = document.getElementById('trans-category').value;
+            const sourceType = document.getElementById('trans-source-type').value;
+            const bankId = sourceType === 'banco' ? document.getElementById('trans-bank-id').value : '';
+            const cardId = sourceType === 'cartao' ? document.getElementById('trans-card-id').value : '';
+            const isFixed = document.getElementById('trans-is-fixed').checked;
+
+            if (id) {
+                // Editar existente
+                const index = transactions.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    transactions[index] = { id, type, desc, amount, date, category, sourceType, bankId, cardId, isFixed };
+                }
+            } else {
+                // Criar novo
+                const newTrans = {
+                    id: 't_' + Date.now(),
+                    type, desc, amount, date, category, sourceType, bankId, cardId, isFixed
+                };
+                transactions.push(newTrans);
+            }
+
+            saveToStorage();
+            closeModal('modal-transaction');
+            renderApp();
+        }
+
+        function editTransaction(id) {
+            const t = transactions.find(item => item.id === id);
+            if (!t) return;
+
+            document.getElementById('trans-id').value = t.id;
+            document.querySelector(`input[name="trans-type"][value="${t.type}"]`).checked = true;
+            document.getElementById('trans-desc').value = t.desc;
+            document.getElementById('trans-amount').value = t.amount;
+            document.getElementById('trans-date').value = t.date;
+            document.getElementById('trans-category').value = t.category;
+            document.getElementById('trans-source-type').value = t.sourceType;
+            document.getElementById('trans-is-fixed').checked = !!t.isFixed;
+
+            handleSourceTypeChange();
+            if (t.bankId) document.getElementById('trans-bank-id').value = t.bankId;
+            if (t.cardId) document.getElementById('trans-card-id').value = t.cardId;
+
+            document.getElementById('modal-transaction-title').textContent = 'Editar Transação';
+            openModal('modal-transaction');
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('Tem certeza que deseja excluir este lançamento?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveToStorage();
+                renderApp();
+            }
+        }
+
+        function toggleTypeUI() {
+            const type = document.querySelector('input[name="trans-type"]:checked').value;
+            const fixedToggle = document.getElementById('fixed-expense-toggle');
+            if (type === 'receita') {
+                fixedToggle.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                fixedToggle.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        // --- UTILITÁRIOS & MODAIS ---
+        function openTransactionModal() {
+            document.getElementById('form-transaction').reset();
+            document.getElementById('trans-id').value = '';
+            document.getElementById('trans-date').valueAsDate = new Date();
+            document.getElementById('modal-transaction-title').textContent = 'Nova Transação';
+            handleSourceTypeChange();
+            toggleTypeUI();
+            openModal('modal-transaction');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+        }
+
+        function exportToCSV() {
+            const filtered = getFilteredTransactions();
+            if (filtered.length === 0) {
+                alert('Nenhuma transação para exportar.');
+                return;
+            }
+
+            let csv = 'ID;Data;Tipo;Descricao;Categoria;Valor;Origem;Fixa\n';
+            filtered.forEach(t => {
+                csv += `${t.id};${t.date};${t.type};"${t.desc}";${t.category};${t.amount};${t.sourceType};${t.isFixed ? 'Sim' : 'Nao'}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `extrato_financeiro_${document.getElementById('filter-month').value}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
